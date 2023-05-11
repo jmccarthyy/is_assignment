@@ -1,0 +1,85 @@
+% importing ssd
+addpath('ssd');
+
+% importing faster-rcnn
+addpath('faster-rcnn');
+
+% importing yolov4
+addpath('yolov4');
+
+% inclusion of vehicle dataset
+cars = imageDatastore('Users/jake/Downloads/Cars_1999/cars_markus', 'FileExtensions', '.jpg', 'LabelSource', 'foldernames');
+
+% augmentation of images
+augmenter = imageDataAugmenter( ...
+    'RandRotation', [-30 30], ...
+    'RandXTranslation', [-50 50], ...
+    'RandYTranslation', [-50 50], ...
+    'RandScale', [0.5 1.5], ...
+    'RandXShear', [-20 20], ...
+    'RandYShear', [-20 20], ...
+    'RandXReflection', true, ...
+    'RandYReflection', true, ...
+    'FillValue', [0 0 0]);
+
+% applying augmentation to vehicle dataset
+cars = augmentedImageDatastore([224 224 3], cars, ...
+    'DataAugmentation', augmenter, ...
+    'ColorPreprocessing', 'gray2rgb', ...
+    'OutputSizeMode', 'resize');
+
+% while loop that runs when dataset contains data
+while hasdata(cars)
+    I = read(cars);
+    
+    % resizing of images in dataset
+    I = imresize(I, [224 224]);
+    
+    % adjusting brightness of images in dataset
+    I = imadjust(I);
+    
+    % rotation of images in dataset
+    angle = randi([-30 30],1,1);
+    I = imrotate(I,angle,'bilinear','crop');
+end
+
+% implementation of sdd for analysing dataset
+ssdResults = objectDetectionSSD(cars);
+
+% implementation of faster-rcnn for analysing dataset
+fasterRcnnResults = objectDetectionFasterRCNN(cars);
+
+% implementation of yolov4 for analysing dataset
+yoloResults = objectDetectionYOLOv4(cars);
+
+% calculating accuracy of ssd
+[ssdPrecision, ssdRecall, ssdF1Score] = evaluateResults(ssdResults);
+
+% calculating accuracy of faster-rcnn
+[fasterRcnnPrecision, fasterRcnnRecall, fasterRcnnF1Score] = evaluateResults(fasterRcnnResults);
+
+% calculating accuracy of yolov4
+[yoloPrecision, yoloRecall, yoloF1Score] = evaluateResults(yoloResults);
+
+% output of accuracy results for ssd
+fprintf('SSD Precision: %.2f, Recall: %.2f, F1 Score: %.2f\n', ssdPrecision, ssdRecall, ssdF1Score);
+
+% output of accuracy results for faster-rcnn
+fprintf('Faster R-CNN Precision: %.2f, Recall: %.2f, F1 Score: %.2f\n', fasterRcnnPrecision, fasterRcnnRecall, fasterRcnnF1Score);
+
+% output of accuracy results for yolov4
+fprintf('YOLOv4 Precision: %.2f, Recall: %.2f, F1 Score: %.2f\n', yoloPrecision, yoloRecall, yoloF1Score);
+
+% inclusion of if and else statements for comparing results
+if ssdF1Score > fasterRcnnF1Score && ssdF1Score > yoloF1Score
+    % if ssd is the most accurate, display this in a message
+    disp('SSD is best for use in parking autonomous vehicles.');
+
+% elseif faster-rcnn is the most accurate, display this in a message
+elseif fasterRcnnF1Score > ssdF1Score && fasterRcnnF1Score > yoloF1Score
+    disp('Faster R-CNN is best for use in parking autonomous vehicles.');
+
+% else, if yolov4 is the most accurate, display this in a message
+else
+    disp('YOLOv4 is best for use in parking autonomous vehicles.');
+end
